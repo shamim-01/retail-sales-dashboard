@@ -100,7 +100,7 @@ This is the part most portfolios skip, but it's the most honest signal of actual
 No install needed — it's one HTML file.
 ```bash
 # just open it
-open dashboard.html
+open index.html
 # or serve it locally
 python3 -m http.server
 ```
