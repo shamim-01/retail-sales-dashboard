@@ -946,7 +946,34 @@
         if (item.unitPrice == null) {
           missingImputed++;
           const avg = catAvg[item.category] || 0;
-          return { ...item, unitPrice: parseFloat(avg.toFixed(2)) };
+          const newUnitPrice = parseFloat(avg.toFixed(2));
+
+          // Recompute every downstream figure so it stays internally
+          // consistent with the imputed price (quantity × unitPrice
+          // must equal grossSales, etc.) — previously only unitPrice
+          // itself was patched, leaving Gross/Net Sales, Cost and
+          // Profit still derived from the (now-hidden) original price.
+          // That mismatch was the "numbers don't add up" bug.
+          const qty = item.quantity || 1;
+          const newGross = parseFloat((qty * newUnitPrice).toFixed(2));
+          const newDiscAmt = parseFloat((newGross * item.discountPct).toFixed(2));
+          const newNet = parseFloat((newGross - newDiscAmt).toFixed(2));
+          // Preserve the original cost-to-netSales ratio so the imputed
+          // row's margin still looks realistic rather than resetting to 0.
+          const oldNet = item.netSales || 1;
+          const costRatio = oldNet !== 0 ? (item.cost / oldNet) : 0.6;
+          const newCost = parseFloat((newNet * costRatio).toFixed(2));
+          const newProfit = parseFloat((newNet - newCost - item.shippingCost).toFixed(2));
+
+          return {
+            ...item,
+            unitPrice: newUnitPrice,
+            grossSales: newGross,
+            discountAmount: newDiscAmt,
+            netSales: newNet,
+            cost: newCost,
+            profit: newProfit
+          };
         }
         return item;
       });
