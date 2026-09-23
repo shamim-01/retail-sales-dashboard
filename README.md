@@ -2,7 +2,7 @@
 
 A single-file, interactive retail analytics dashboard built to practice **data visualization, statistical analysis, and data-cleaning workflows**. No backend, no database — everything runs client-side in the browser.
 
-**🔗 Live demo:** [Live](https://retail-sales-dashboard-hiig.vercel.app/)
+**🔗 Live demo:** [Live](https://retail-sales-dashboard-vaxp.vercel.app/)
 ## 📊 Dashboard Preview
 
 <img src="dashboard.png" alt="Dashboard Screenshot" width="800">
