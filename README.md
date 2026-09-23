@@ -5,7 +5,7 @@ A single-file, interactive retail analytics dashboard built to practice **data v
 **🔗 Live demo:** [Live](https://retail-sales-dashboard-vaxp.vercel.app/)
 ## 📊 Dashboard Preview
 
-<img src="dashboard.png" alt="Dashboard Screenshot" width="800">
+<img src="Dashboard.png" alt="Dashboard Screenshot" width="800">
 
 > **Note on data:** This project uses a **synthetically generated dataset** (1,000 records) built specifically for practice. It is deliberately seeded with realistic messiness (duplicate rows, inconsistent labels, missing values) so the data-cleaning pipeline has something real to clean. It is not production data.
 
