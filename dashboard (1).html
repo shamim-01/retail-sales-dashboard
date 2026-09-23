@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Global Retail Sales - Interactive Analytics Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .dark .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #475569;
+    }
+
+    /* Toast for data reset / save notifications */
+    #toast {
+      position: fixed;
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      z-index: 60;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+
+<body
+  class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+  <!-- Top Navigation Header -->
+  <header
+    class="sticky z-30 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 px-4 lg:px-8 py-3 transition-colors"
+    style="top: env(safe-area-inset-top, 0px);">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-500/20">
+          <i data-lucide="bar-chart-3" class="w-6 h-6" aria-hidden="true"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-slate-900 dark:text-white leading-none">
+            GLOBAL RETAIL SALES <span class="text-blue-600 dark:text-blue-400 font-normal">DASHBOARD</span>
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Interactive Executive Intelligence & Margin Optimization Engine
+          </p>
+        </div>
+      </div>
+
+      <!-- Controls & Actions -->
+      <div class="flex items-center gap-3 w-full md:w-auto justify-end flex-wrap">
+        <button id="themeToggleBtn" onclick="toggleTheme()" aria-label="Toggle dark mode"
+          class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+          <i data-lucide="moon" id="themeIcon" class="w-4 h-4" aria-hidden="true"></i>
+        </button>
+        <input type="file" id="csvImportInput" accept=".csv" class="hidden" onchange="handleCSVImport(event)">
+        <button onclick="document.getElementById('csvImportInput').click()" aria-label="Import CSV dataset"
+          class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-sm transition">
+          <i data-lucide="upload" class="w-4 h-4" aria-hidden="true"></i>
+          Import CSV
+        </button>
+        <button onclick="exportDataCSV()" aria-label="Export filtered data as CSV"
+          class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition">
+          <i data-lucide="download" class="w-4 h-4" aria-hidden="true"></i>
+          Export CSV
+        </button>
+        <button onclick="resetAllFilters()" aria-label="Reset all filters"
+          class="flex items-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition">
+          <i data-lucide="rotate-ccw" class="w-4 h-4" aria-hidden="true"></i>
+          Reset Filters
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+    <!-- Interactive Global Filter Panel -->
+    <section
+      class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+      <div class="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700/60 pb-3">
+        <div class="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <i data-lucide="filter" class="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true"></i>
+          Global Dynamic Filters
+        </div>
+        <span id="activeRecordCount"
+          class="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/60 px-2.5 py-1 rounded-full">
+          Showing 1,000 / 1,000 Orders
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
+        <!-- Region Filter -->
+        <div>
+          <label for="filterRegion" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Region</label>
+          <select id="filterRegion" onchange="applyFilters()"
+            class="w-full text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="ALL">All Regions</option>
+            <option value="North America">North America</option>
+            <option value="Europe">Europe</option>
+            <option value="Asia Pacific">Asia Pacific</option>
+            <option value="Middle East">Middle East</option>
+          </select>
+        </div>
+
+        <!-- Category Filter -->
+        <div>
+          <label for="filterCategory" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Category</label>
+          <select id="filterCategory" onchange="applyFilters()"
+            class="w-full text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="ALL">All Categories</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Office Supplies">Office Supplies</option>
+            <option value="Home & Lifestyle">Home & Lifestyle</option>
+            <option value="Fashion">Fashion</option>
+          </select>
+        </div>
+
+        <!-- Segment Filter -->
+        <div>
+          <label for="filterSegment" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Customer Segment</label>
+          <select id="filterSegment" onchange="applyFilters()"
+            class="w-full text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="ALL">All Segments</option>
+            <option value="Consumer">Consumer</option>
+            <option value="Corporate">Corporate</option>
+            <option value="Small Business">Small Business</option>
+            <option value="Home Office">Home Office</option>
+          </select>
+        </div>
+
+        <!-- Channel Filter -->
+        <div>
+          <label for="filterChannel" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Sales Channel</label>
+          <select id="filterChannel" onchange="applyFilters()"
+            class="w-full text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="ALL">All Channels</option>
+            <option value="Online Platform">Online Platform</option>
+            <option value="Retail Store">Retail Store</option>
+            <option value="Direct B2B">Direct B2B</option>
+          </select>
+        </div>
+
+        <!-- Order Status Filter -->
+        <div>
+          <label for="filterStatus" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Order Status</label>
+          <select id="filterStatus" onchange="applyFilters()"
+            class="w-full text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="ALL">All Statuses</option>
+            <option value="Delivered">Delivered</option>
+            <option value="Shipped">Shipped</option>
+            <option value="Pending">Pending</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Returned">Returned</option>
+          </select>
+        </div>
+
+        <!-- Discount Tier Filter -->
+        <div>
+          <label for="filterDiscount" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Discount Tier</label>
+          <select id="filterDiscount" onchange="applyFilters()"
+            class="w-full text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="ALL">All Discounts</option>
+            <option value="0-10">Low (0% - 10%)</option>
+            <option value="11-20">Medium (11% - 20%)</option>
+            <option value="21-50">High (> 20%)</option>
+          </select>
+        </div>
+
+        <!-- Date From -->
+        <div>
+          <label for="filterDateFrom" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Date From</label>
+          <input type="date" id="filterDateFrom" onchange="applyFilters()"
+            class="w-full text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+
+        <!-- Date To -->
+        <div>
+          <label for="filterDateTo" class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Date To</label>
+          <input type="date" id="filterDateTo" onchange="applyFilters()"
+            class="w-full text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+      </div>
+
+      <!-- Quick Date Range Presets -->
+      <div class="flex flex-wrap gap-2">
+        <span class="text-xs text-slate-400 dark:text-slate-500 self-center mr-1">Quick range:</span>
+        <button onclick="applyDatePreset(30)" class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">Last 30 days</button>
+        <button onclick="applyDatePreset(90)" class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">Last 90 days</button>
+        <button onclick="applyDatePreset(180)" class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">Last 6 months</button>
+        <button onclick="applyDatePreset(0)" class="text-[11px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition">All time</button>
+      </div>
+    </section>
+
+    <!-- Executive KPI Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Net Sales Card -->
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden transition-colors">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Net Revenue
+            </p>
+            <h3 id="kpiNetSales" class="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">$0</h3>
+          </div>
+          <div class="p-2.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-xl">
+            <i data-lucide="dollar-sign" class="w-5 h-5" aria-hidden="true"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-2 text-xs">
+          <span id="kpiGrossSales" class="text-slate-500 dark:text-slate-400">Gross: $0</span>
+          <span class="text-slate-300 dark:text-slate-600">•</span>
+          <span id="kpiDiscountTotal" class="text-amber-600 dark:text-amber-400 font-medium">Disc: $0</span>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-blue-600"></div>
+      </div>
+
+      <!-- Net Profit Card -->
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden transition-colors">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Net Profit
+            </p>
+            <h3 id="kpiNetProfit" class="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">$0
+            </h3>
+          </div>
+          <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-xl">
+            <i data-lucide="trending-up" class="w-5 h-5" aria-hidden="true"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-2 text-xs">
+          <span id="kpiMargin" class="text-emerald-600 dark:text-emerald-400 font-semibold">Margin: 0.0%</span>
+          <span class="text-slate-300 dark:text-slate-600">•</span>
+          <span id="kpiShippingCost" class="text-slate-500 dark:text-slate-400">Ship: $0</span>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-emerald-500"></div>
+      </div>
+
+      <!-- Total Orders & AOV Card -->
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden transition-colors">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Orders</p>
+            <h3 id="kpiTotalOrders" class="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white mt-1">0
+            </h3>
+          </div>
+          <div class="p-2.5 bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 rounded-xl">
+            <i data-lucide="shopping-bag" class="w-5 h-5" aria-hidden="true"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-2 text-xs">
+          <span id="kpiAOV" class="text-purple-600 dark:text-purple-400 font-semibold">AOV: $0</span>
+          <span class="text-slate-300 dark:text-slate-600">•</span>
+          <span id="kpiTotalQty" class="text-slate-500 dark:text-slate-400">Qty: 0</span>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-purple-500"></div>
+      </div>
+
+      <!-- Friction & Operational Risk Card -->
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm relative overflow-hidden transition-colors">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Friction & Loss
+              Rate</p>
+            <h3 id="kpiFrictionRate" class="text-2xl lg:text-3xl font-extrabold text-rose-600 dark:text-rose-400 mt-1">
+              0.0%</h3>
+          </div>
+          <div class="p-2.5 bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 rounded-xl">
+            <i data-lucide="alert-triangle" class="w-5 h-5" aria-hidden="true"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-2 text-xs">
+          <span id="kpiReturnRate" class="text-amber-600 dark:text-amber-400 font-medium">Ret: 0%</span>
+          <span class="text-slate-300 dark:text-slate-600">•</span>
+          <span id="kpiCancelRate" class="text-rose-600 dark:text-rose-400 font-medium">Canc: 0%</span>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-1 bg-rose-500"></div>
+      </div>
+    </section>
+
+    <!-- Chart Section 1: Monthly Trends & Category Performance -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Monthly Trend (2 Cols) -->
+      <div
+        class="lg:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+          <div>
+            <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Monthly Revenue & Profit Trajectory</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Net Sales Volume vs Bottom-line Profitability over
+              time</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span> Sales
+            </span>
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Profit
+            </span>
+          </div>
+        </div>
+        <div class="h-72 w-full">
+          <canvas id="chartMonthlyTrend" role="img" aria-label="Monthly net sales and profit trend chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Category Performance (1 Col) -->
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div class="mb-4">
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Category Revenue Share</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Net Revenue distribution across product lines</p>
+        </div>
+        <div class="h-72 w-full flex items-center justify-center">
+          <canvas id="chartCategoryShare" role="img" aria-label="Category revenue share doughnut chart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chart Section 2: Regional Performance & Channel Matrix -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Region Profitability -->
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div class="mb-4">
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Regional Profitability</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Net Profit generated per global geographic region</p>
+        </div>
+        <div class="h-64 w-full">
+          <canvas id="chartRegionProfit" role="img" aria-label="Regional profitability bar chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Sales Channel Split -->
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div class="mb-4">
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Channel Efficiency</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Revenue generation across touchpoints</p>
+        </div>
+        <div class="h-64 w-full">
+          <canvas id="chartSalesChannel" role="img" aria-label="Sales channel split pie chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Top 5 Products -->
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors md:col-span-2 lg:col-span-1">
+        <div class="mb-4">
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Top 5 Products by Profit</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Highest bottom-line contributing SKUs</p>
+        </div>
+        <div class="h-64 w-full">
+          <canvas id="chartTopProducts" role="img" aria-label="Top five products by profit bar chart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Margin Optimization Calculator -->
+    <section
+      class="bg-gradient-to-r from-slate-900 to-blue-950 text-white p-6 rounded-2xl shadow-lg border border-slate-800">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div class="space-y-2 lg:max-w-md">
+          <div
+            class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-400 bg-blue-900/60 px-3 py-1 rounded-full border border-blue-700/50">
+            <i data-lucide="sliders" class="w-3.5 h-3.5" aria-hidden="true"></i>
+            What-If Scenario Simulator
+          </div>
+          <h3 class="text-lg font-bold">Discount Optimization Engine</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Test the financial impact of capping high promotional discounts. See how curbing discounts above 15%
+            directly expands your net margin!
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+          <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700/80">
+            <label for="simCapSlider" class="block text-xs font-medium text-slate-300 mb-2">Maximum Discount Cap (%): <span
+                id="simCapValue" class="font-bold text-blue-400">15%</span></label>
+            <input type="range" id="simCapSlider" min="5" max="30" value="15" step="1" oninput="runScenarioSimulation()"
+              class="w-full accent-blue-500">
+            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+              <span>Strict (5%)</span>
+              <span>Current Baseline</span>
+              <span>Uncapped (30%)</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700/80 flex flex-col justify-between">
+            <span class="text-xs text-slate-400">Simulated Net Profit Gain</span>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span id="simProfitGain" class="text-2xl font-extrabold text-emerald-400">+$0</span>
+              <span id="simMarginBoost" class="text-xs font-bold text-emerald-400">(+0.0%)</span>
+            </div>
+            <span class="text-[10px] text-slate-400 mt-1">*Recalculated in real-time based on active filters</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Analytical Insights Section (Data-Analyst layer) -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Auto-generated Key Insights -->
+      <div
+        class="lg:col-span-2 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div class="mb-4 flex items-center gap-2">
+          <i data-lucide="lightbulb" class="w-4 h-4 text-amber-500" aria-hidden="true"></i>
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Key Insights</h3>
+        </div>
+        <ul id="keyInsightsList" class="space-y-2.5 text-xs text-slate-600 dark:text-slate-300">
+          <!-- Populated by renderInsights() -->
+        </ul>
+      </div>
+
+      <!-- Statistical Rigor Card -->
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div class="mb-4 flex items-center gap-2">
+          <i data-lucide="activity" class="w-4 h-4 text-indigo-500" aria-hidden="true"></i>
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Statistical Snapshot</h3>
+        </div>
+        <div class="space-y-3 text-xs">
+          <div>
+            <p class="text-slate-400 dark:text-slate-500">AOV (95% confidence interval)</p>
+            <p id="statAOVCI" class="font-semibold text-slate-800 dark:text-slate-100 mt-0.5">—</p>
+          </div>
+          <div>
+            <p class="text-slate-400 dark:text-slate-500">Discount % ↔ Return Rate correlation</p>
+            <p id="statCorrelation" class="font-semibold text-slate-800 dark:text-slate-100 mt-0.5">—</p>
+          </div>
+          <div>
+            <p class="text-slate-400 dark:text-slate-500">Month-over-month sales growth</p>
+            <p id="statMoM" class="font-semibold text-slate-800 dark:text-slate-100 mt-0.5">—</p>
+          </div>
+          <div>
+            <p class="text-slate-400 dark:text-slate-500">Outlier transactions flagged</p>
+            <p id="statOutliers" class="font-semibold text-slate-800 dark:text-slate-100 mt-0.5">—</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Deeper Analysis: Discount-Return relationship + Pareto -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div class="mb-4">
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Return Rate by Discount Band</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Visualizes the correlation shown in the Statistical Snapshot — does bigger discount mean more returns?</p>
+        </div>
+        <div class="h-64 w-full">
+          <canvas id="chartDiscountReturn" role="img" aria-label="Return rate by discount band bar chart"></canvas>
+        </div>
+      </div>
+
+      <div
+        class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div class="mb-4">
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Pareto: Product Profit Contribution</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Top products (bars) vs cumulative share of total profit (line) — classic 80/20 check</p>
+        </div>
+        <div class="h-64 w-full">
+          <canvas id="chartPareto" role="img" aria-label="Pareto chart of cumulative product profit contribution"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Data Quality Report -->
+    <section id="dataQualitySection"
+      class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors hidden">
+      <div class="mb-3 flex items-center gap-2">
+        <i data-lucide="shield-check" class="w-4 h-4 text-teal-600" aria-hidden="true"></i>
+        <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Data Quality Report</h3>
+        <span class="text-xs text-slate-400 dark:text-slate-500">(cleaning applied automatically on load / import)</span>
+      </div>
+      <div id="dataQualityGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <!-- Populated by renderDataQualityReport() -->
+      </div>
+    </section>
+
+    <!-- Interactive Transaction Table -->
+    <section
+      class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
+      <!-- Table Header Controls -->
+      <div
+        class="p-5 border-b border-slate-100 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-100">Transaction Records Master Ledger</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Detailed transaction drill-down with dynamic search</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="relative w-full sm:w-64">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"></i>
+            <input type="text" id="tableSearch" onkeyup="handleTableSearch()" aria-label="Search transactions"
+              placeholder="Search product, customer, city..."
+              class="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+          </div>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead
+            class="bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+            <tr>
+              <th class="py-3.5 px-4 cursor-pointer hover:text-blue-600" onclick="sortTable('orderId')">Order ID <span id="sortIcon-orderId"></span></th>
+              <th class="py-3.5 px-4 cursor-pointer hover:text-blue-600" onclick="sortTable('orderDate')">Date <span id="sortIcon-orderDate">▼</span></th>
+              <th class="py-3.5 px-4">Region / City</th>
+              <th class="py-3.5 px-4">Category</th>
+              <th class="py-3.5 px-4">Product</th>
+              <th class="py-3.5 px-4 text-right cursor-pointer hover:text-blue-600" onclick="sortTable('netSales')">Net Sales <span id="sortIcon-netSales"></span></th>
+              <th class="py-3.5 px-4 text-right cursor-pointer hover:text-blue-600" onclick="sortTable('profit')">Profit <span id="sortIcon-profit"></span></th>
+              <th class="py-3.5 px-4 text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"
+            class="divide-y divide-slate-100 dark:divide-slate-700/60 text-slate-700 dark:text-slate-300">
+            <!-- Dynamic Rows injected via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Table Pagination -->
+      <div
+        class="p-4 border-t border-slate-100 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+        <span id="tablePageInfo">Showing 1 to 10 of 1000 entries</span>
+        <div class="flex items-center gap-2">
+          <button id="btnPrevPage" onclick="changePage(-1)" aria-label="Previous page"
+            class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">Previous</button>
+          <span id="currentPageNum" class="font-semibold text-slate-800 dark:text-slate-200">1</span>
+          <button id="btnNextPage" onclick="changePage(1)" aria-label="Next page"
+            class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="bg-slate-900 dark:bg-slate-700 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-lg"></div>
+
+  <script>
+    // ============================================================
+    // Global State
+    // ============================================================
+    let rawDataset = [];
+    let filteredDataset = [];
+    let chartInstances = {};
+    let currentPage = 1;
+    const pageSize = 10;
+    let sortCol = 'orderDate';
+    let sortAsc = false;
+    let searchDebounceTimer = null;
+    const STORAGE_KEY = 'retailDashboard_dataset_v2';
+    let dataQualityReport = null;
+
+    // ============================================================
+    // FIX (root cause of blank/white dashboard): the external
+    // Lucide script was failing to load, and lucide.createIcons()
+    // was the FIRST call inside DOMContentLoaded — so the moment it
+    // threw "lucide is not defined", every line after it (dataset
+    // load, chart init, applyFilters) never ran, leaving an empty
+    // unstyled-looking page. Icons are now inline SVG, no external
+    // script required at all.
+    // ============================================================
+    const ICONS = {
+      'bar-chart-3': '<path d="M3 3v18h18"/><path d="M7 16v-4"/><path d="M12 16V8"/><path d="M17 16v-7"/>',
+      'moon': '<path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79Z"/>',
+      'sun': '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
+      'download': '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+      'upload': '<path d="M12 21V9"/><path d="m7 14 5-5 5 5"/><path d="M5 21h14"/>',
+      'rotate-ccw': '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+      'filter': '<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3Z"/>',
+      'dollar-sign': '<path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+      'trending-up': '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+      'shopping-bag': '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+      'alert-triangle': '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+      'sliders': '<path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/>',
+      'search': '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+      'lightbulb': '<path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1v.2h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2Z"/>',
+      'activity': '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+      'shield-check': '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.79 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>'
+    };
+
+    function makeIconSvg(name, cls, id) {
+      const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svgEl.setAttribute('viewBox', '0 0 24 24');
+      svgEl.setAttribute('fill', 'none');
+      svgEl.setAttribute('stroke', 'currentColor');
+      svgEl.setAttribute('stroke-width', '2');
+      svgEl.setAttribute('stroke-linecap', 'round');
+      svgEl.setAttribute('stroke-linejoin', 'round');
+      if (cls) svgEl.setAttribute('class', cls);
+      if (id) svgEl.id = id;
+      svgEl.setAttribute('aria-hidden', 'true');
+      svgEl.innerHTML = ICONS[name] || '';
+      return svgEl;
+    }
+
+    function renderIcons(root) {
+      (root || document).querySelectorAll('[data-lucide]').forEach(el => {
+        const name = el.getAttribute('data-lucide');
+        const svgEl = makeIconSvg(name, el.getAttribute('class'), el.id || null);
+        el.replaceWith(svgEl);
+      });
+    }
+
+    function setIcon(id, name) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const svgEl = makeIconSvg(name, el.getAttribute('class'), id);
+      el.replaceWith(svgEl);
+    }
+
+    // ============================================================
+    // Init
+    // ============================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        renderIcons();
+      } catch (e) {
+        console.warn('Icon render failed (non-blocking):', e);
+      }
+      loadOrGenerateDataset();
+      filteredDataset = [...rawDataset];
+      initCharts();
+      applyFilters();
+    });
+
+    // ------------------------------------------------------------
+    // FIX 1: persistent dataset (localStorage) so numbers don't
+    // reshuffle on every page refresh — wrapped in try/catch per
+    // publishing rules (private, per-viewer only).
+    // ------------------------------------------------------------
+    function loadOrGenerateDataset() {
+      try {
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          rawDataset = parsed.dataset;
+          dataQualityReport = parsed.report;
+          return;
+        }
+      } catch (e) {
+        console.warn('Could not read cached dataset, regenerating.', e);
+      }
+      generateMockDataset();
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ dataset: rawDataset, report: dataQualityReport }));
+      } catch (e) {
+        console.warn('Could not cache dataset.', e);
+      }
+    }
+
+    function regenerateDataset() {
+      generateMockDataset();
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ dataset: rawDataset, report: dataQualityReport }));
+      } catch (e) {
+        console.warn('Could not cache dataset.', e);
+      }
+      filteredDataset = [...rawDataset];
+      applyFilters();
+      showToast('Dataset regenerated');
+    }
+
+    // Theme Toggle Function
+    function toggleTheme() {
+      const htmlEl = document.documentElement;
+      const isDark = htmlEl.classList.toggle('dark');
+      setIcon('themeIcon', isDark ? 'sun' : 'moon');
+      updateChartTheme(); // FIX 2: this function now actually exists (see below)
+    }
+
+    // ------------------------------------------------------------
+    // FIX 2: updateChartTheme was called but never defined in the
+    // original file — caused a ReferenceError on every dark-mode
+    // toggle. Implemented here so chart grid/legend/tick colors
+    // adapt to the active theme instead of staying hard-coded.
+    // ------------------------------------------------------------
+    function updateChartTheme() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(100,116,139,0.12)';
+      const textColor = isDark ? '#cbd5e1' : '#475569';
+
+      Object.values(chartInstances).forEach(chart => {
+        if (!chart) return;
+        if (chart.options.scales) {
+          Object.values(chart.options.scales).forEach(scale => {
+            if (scale.grid) scale.grid.color = gridColor;
+            if (scale.ticks) scale.ticks.color = textColor;
+          });
+        }
+        if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+          chart.options.plugins.legend.labels.color = textColor;
+        }
+        chart.update();
+      });
+    }
+
+    // Generate 1,000 Realistic Retail Records matching user's original schema
+    // Deliberately seeded with realistic messiness (inconsistent region
+    // labels, missing unit price, duplicate rows) — cleaned immediately
+    // after by cleanDataset() so the "Data Quality Report" panel has
+    // something real to show, the way a real ingested dataset would.
+    function generateMockDataset() {
+      const regions = ['North America', 'Europe', 'Asia Pacific', 'Middle East'];
+      const regionAliases = {
+        'North America': ['North America', 'North America', 'North America', 'North America', 'USA', 'United States'],
+        'Europe': ['Europe', 'Europe', 'Europe', 'Europe', 'EU'],
+        'Asia Pacific': ['Asia Pacific', 'Asia Pacific', 'Asia Pacific', 'Asia Pacific', 'APAC'],
+        'Middle East': ['Middle East', 'Middle East', 'Middle East', 'Middle East', 'ME']
+      };
+      const cities = {
+        'North America': ['New York', 'Chicago', 'Los Angeles', 'Toronto'],
+        'Europe': ['London', 'Madrid', 'Berlin', 'Paris'],
+        'Asia Pacific': ['Tokyo', 'Singapore', 'Sydney', 'Mumbai'],
+        'Middle East': ['Dubai', 'Riyadh', 'Doha', 'Abu Dhabi']
+      };
+      const categories = {
+        'Electronics': ['Smartphones', 'Laptops', 'Tablets', 'Accessories'],
+        'Office Supplies': ['Paper', 'Binders', 'Pens', 'Storage'],
+        'Home & Lifestyle': ['Furniture', 'Lighting', 'Decor', 'Kitchenware'],
+        'Fashion': ['Footwear', 'Apparel', 'Watches', 'Bags']
+      };
+      const products = {
+        'Smartphones': ['Pro Max Phone', 'Ultra 5G Phone', 'Mini Lite'],
+        'Laptops': ['Workstation Pro', 'Ultrabook 14', 'Gaming Beast'],
+        'Tablets': ['Tab Pro 11', 'Air Pad 10'],
+        'Accessories': ['Wireless Earbuds', 'Fast Charger 65W', 'USB Hub'],
+        'Paper': ['A4 Copy Paper', 'Premium Photo Paper'],
+        'Binders': ['Heavy Duty Binder', 'Ring Notebook'],
+        'Pens': ['Gel Pen Box', 'Executive Fountain Pen'],
+        'Storage': ['Archival Box', 'Desk Organizer'],
+        'Furniture': ['Ergonomic Chair', 'Standing Desk', 'Bookshelf'],
+        'Lighting': ['LED Desk Lamp', 'Ambient Bar'],
+        'Decor': ['Wall Clock', 'Canvas Print'],
+        'Kitchenware': ['Coffee Tumbler', 'Water Bottle'],
+        'Footwear': ['Running Shoes', 'Leather Loafers'],
+        'Apparel': ['Cotton Polo', 'Formal Blazer'],
+        'Watches': ['Smart Watch Series 7', 'Classic Analog'],
+        'Bags': ['Leather Laptop Bag', 'Travel Backpack']
+      };
+      const segments = ['Consumer', 'Corporate', 'Small Business', 'Home Office'];
+      const channels = ['Online Platform', 'Retail Store', 'Direct B2B'];
+      const statuses = ['Delivered', 'Delivered', 'Delivered', 'Delivered', 'Shipped', 'Pending', 'Cancelled', 'Returned'];
+
+      let data = [];
+      const startDate = new Date(2025, 0, 1);
+
+      for (let i = 1; i <= 1000; i++) {
+        const region = regions[Math.floor(Math.random() * regions.length)];
+        const cityList = cities[region];
+        const city = cityList[Math.floor(Math.random() * cityList.length)];
+
+        const catKeys = Object.keys(categories);
+        const category = catKeys[Math.floor(Math.random() * catKeys.length)];
+        const subKeys = categories[category];
+        const subcategory = subKeys[Math.floor(Math.random() * subKeys.length)];
+        const prodList = products[subcategory];
+        const product = prodList[Math.floor(Math.random() * prodList.length)];
+
+        const quantity = Math.floor(Math.random() * 8) + 1;
+        const unitPrice = parseFloat((Math.random() * 250 + 15).toFixed(2));
+        const discountPct = parseFloat(([0, 0.05, 0.1, 0.15, 0.2, 0.25][Math.floor(Math.random() * 6)]).toFixed(2));
+
+        const grossSales = parseFloat((quantity * unitPrice).toFixed(2));
+        const discountAmount = parseFloat((grossSales * discountPct).toFixed(2));
+        const netSales = parseFloat((grossSales - discountAmount).toFixed(2));
+
+        const cost = parseFloat((netSales * (Math.random() * 0.35 + 0.45)).toFixed(2));
+        const shippingCost = parseFloat((Math.random() * 25 + 5).toFixed(2));
+        const profit = parseFloat((netSales - cost - shippingCost).toFixed(2));
+
+        const date = new Date(startDate.getTime() + Math.random() * (365 * 24 * 60 * 60 * 1000));
+        const dateStr = date.toISOString().split('T')[0];
+
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        const segment = segments[Math.floor(Math.random() * segments.length)];
+        const channel = channels[Math.floor(Math.random() * channels.length)];
+
+        // Realistic messiness: inconsistent region label (~15% of rows use
+        // an alias like "USA"/"EU" instead of the canonical name) and
+        // occasional missing unit price (~1.5%), as if scraped from
+        // multiple source systems.
+        const regionAliasList = regionAliases[region];
+        const regionLabel = regionAliasList[Math.floor(Math.random() * regionAliasList.length)];
+        const unitPriceRaw = Math.random() < 0.015 ? null : unitPrice;
+
+        data.push({
+          orderId: `ORD-${10000 + i}`,
+          orderDate: dateStr,
+          customerId: `CUST-${1000 + (i % 300)}`,
+          region: regionLabel,
+          city,
+          segment,
+          category,
+          subcategory,
+          product,
+          quantity,
+          unitPrice: unitPriceRaw,
+          discountPct,
+          discountAmount,
+          grossSales,
+          netSales,
+          cost,
+          shippingCost,
+          profit,
+          channel,
+          status
+        });
+      }
+
+      // Inject a small number of duplicate rows (~1.5%) to simulate a
+      // double-ingested export — cleanDataset() below removes these.
+      const dupeCount = Math.round(data.length * 0.015);
+      for (let d = 0; d < dupeCount; d++) {
+        const idx = Math.floor(Math.random() * data.length);
+        data.push({ ...data[idx] });
+      }
+
+      const cleaned = cleanDataset(data);
+      dataQualityReport = cleaned.report;
+      let clean = cleaned.clean;
+
+      // Sort by Order Date descending
+      clean.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+      rawDataset = clean;
+    }
+
+    // ------------------------------------------------------------
+    // Data cleaning pipeline — analyst-style: normalize inconsistent
+    // category labels, drop duplicate records (by Order ID), and
+    // impute missing numeric fields (category-average unit price)
+    // rather than silently dropping incomplete rows. Every step is
+    // counted so the Data Quality Report panel can show real numbers.
+    // ------------------------------------------------------------
+    function cleanDataset(data) {
+      const totalRaw = data.length;
+      const regionMap = {
+        'usa': 'North America', 'united states': 'North America', 'north america': 'North America',
+        'eu': 'Europe', 'europe': 'Europe',
+        'apac': 'Asia Pacific', 'asia pacific': 'Asia Pacific',
+        'me': 'Middle East', 'middle east': 'Middle East'
+      };
+
+      let labelsNormalized = 0;
+      const normalized = data.map(item => {
+        const key = String(item.region).trim().toLowerCase();
+        const canonical = regionMap[key] || item.region;
+        if (canonical !== item.region) labelsNormalized++;
+        return { ...item, region: canonical };
+      });
+
+      let duplicatesRemoved = 0;
+      const seen = new Set();
+      const deduped = [];
+      normalized.forEach(item => {
+        if (seen.has(item.orderId)) {
+          duplicatesRemoved++;
+          return;
+        }
+        seen.add(item.orderId);
+        deduped.push(item);
+      });
+
+      const catSums = {};
+      deduped.forEach(item => {
+        if (item.unitPrice != null) {
+          if (!catSums[item.category]) catSums[item.category] = { sum: 0, count: 0 };
+          catSums[item.category].sum += item.unitPrice;
+          catSums[item.category].count += 1;
+        }
+      });
+      const catAvg = {};
+      Object.keys(catSums).forEach(cat => {
+        catAvg[cat] = catSums[cat].sum / catSums[cat].count;
+      });
+
+      let missingImputed = 0;
+      const cleaned = deduped.map(item => {
+        if (item.unitPrice == null) {
+          missingImputed++;
+          const avg = catAvg[item.category] || 0;
+          const newUnitPrice = parseFloat(avg.toFixed(2));
+
+          // Recompute every downstream figure so it stays internally
+          // consistent with the imputed price (quantity × unitPrice
+          // must equal grossSales, etc.) — previously only unitPrice
+          // itself was patched, leaving Gross/Net Sales, Cost and
+          // Profit still derived from the (now-hidden) original price.
+          // That mismatch was the "numbers don't add up" bug.
+          const qty = item.quantity || 1;
+          const newGross = parseFloat((qty * newUnitPrice).toFixed(2));
+          const newDiscAmt = parseFloat((newGross * item.discountPct).toFixed(2));
+          const newNet = parseFloat((newGross - newDiscAmt).toFixed(2));
+          // Preserve the original cost-to-netSales ratio so the imputed
+          // row's margin still looks realistic rather than resetting to 0.
+          const oldNet = item.netSales || 1;
+          const costRatio = oldNet !== 0 ? (item.cost / oldNet) : 0.6;
+          const newCost = parseFloat((newNet * costRatio).toFixed(2));
+          const newProfit = parseFloat((newNet - newCost - item.shippingCost).toFixed(2));
+
+          return {
+            ...item,
+            unitPrice: newUnitPrice,
+            grossSales: newGross,
+            discountAmount: newDiscAmt,
+            netSales: newNet,
+            cost: newCost,
+            profit: newProfit
+          };
+        }
+        return item;
+      });
+
+      return {
+        clean: cleaned,
+        report: { totalRaw, duplicatesRemoved, missingImputed, labelsNormalized, totalClean: cleaned.length }
+      };
+    }
+
+    // ------------------------------------------------------------
+    // Data Quality Report renderer
+    // ------------------------------------------------------------
+    function renderDataQualityReport() {
+      const section = document.getElementById('dataQualitySection');
+      const grid = document.getElementById('dataQualityGrid');
+      if (!dataQualityReport) { section.classList.add('hidden'); return; }
+      section.classList.remove('hidden');
+      const r = dataQualityReport;
+      const cards = [
+        { label: 'Raw rows ingested', value: r.totalRaw.toLocaleString() },
+        { label: 'Duplicate rows removed', value: r.duplicatesRemoved.toLocaleString() },
+        { label: 'Region labels normalized', value: r.labelsNormalized.toLocaleString() },
+        { label: 'Missing unit price imputed', value: r.missingImputed.toLocaleString() }
+      ];
+      grid.innerHTML = cards.map(c => `
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700/60">
+          <p class="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">${c.label}</p>
+          <p class="text-lg font-bold text-slate-800 dark:text-slate-100 mt-0.5">${c.value}</p>
+        </div>
+      `).join('');
+    }
+
+    // ------------------------------------------------------------
+    // Stats helpers
+    // ------------------------------------------------------------
+    function mean(arr) {
+      if (!arr.length) return 0;
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    function stdDev(arr) {
+      if (arr.length < 2) return 0;
+      const m = mean(arr);
+      const variance = arr.reduce((acc, v) => acc + Math.pow(v - m, 2), 0) / (arr.length - 1);
+      return Math.sqrt(variance);
+    }
+
+    function pearsonCorrelation(xs, ys) {
+      const n = xs.length;
+      if (n < 2) return 0;
+      const mx = mean(xs), my = mean(ys);
+      let num = 0, dx2 = 0, dy2 = 0;
+      for (let i = 0; i < n; i++) {
+        const dx = xs[i] - mx, dy = ys[i] - my;
+        num += dx * dy;
+        dx2 += dx * dx;
+        dy2 += dy * dy;
+      }
+      const denom = Math.sqrt(dx2 * dy2);
+      return denom === 0 ? 0 : num / denom;
+    }
+
+    function correlationLabel(r) {
+      const abs = Math.abs(r);
+      let strength = 'negligible';
+      if (abs >= 0.7) strength = 'strong';
+      else if (abs >= 0.4) strength = 'moderate';
+      else if (abs >= 0.2) strength = 'weak';
+      const direction = r > 0 ? 'positive' : (r < 0 ? 'negative' : 'no');
+      return { strength, direction };
+    }
+
+    // ------------------------------------------------------------
+    // Auto-generated Key Insights + Statistical Snapshot
+    // ------------------------------------------------------------
+    function renderInsights() {
+      const listEl = document.getElementById('keyInsightsList');
+      const effective = filteredDataset.filter(d => d.status === 'Delivered' || d.status === 'Shipped');
+      const insights = [];
+
+      if (effective.length < 5) {
+        listEl.innerHTML = `<li class="text-slate-400">Not enough data in the current filter to generate insights — widen your filters.</li>`;
+        document.getElementById('statAOVCI').innerText = '—';
+        document.getElementById('statCorrelation').innerText = '—';
+        document.getElementById('statMoM').innerText = '—';
+        document.getElementById('statOutliers').innerText = '—';
+        return;
+      }
+
+      // 1. Region margin vs volume opportunity
+      const regionStats = {};
+      effective.forEach(item => {
+        if (!regionStats[item.region]) regionStats[item.region] = { sales: 0, profit: 0, count: 0 };
+        regionStats[item.region].sales += item.netSales;
+        regionStats[item.region].profit += item.profit;
+        regionStats[item.region].count += 1;
+      });
+      const regionEntries = Object.entries(regionStats).map(([region, s]) => ({
+        region, margin: s.sales > 0 ? (s.profit / s.sales) * 100 : 0, count: s.count
+      }));
+      if (regionEntries.length > 1) {
+        const byMargin = [...regionEntries].sort((a, b) => b.margin - a.margin);
+        const byVolume = [...regionEntries].sort((a, b) => a.count - b.count);
+        const topMargin = byMargin[0];
+        if (topMargin.region === byVolume[0].region) {
+          insights.push(`<b>${escapeHtml(topMargin.region)}</b> has both the highest margin (${topMargin.margin.toFixed(1)}%) and the lowest order volume in the current view — a potential expansion opportunity.`);
+        } else {
+          insights.push(`<b>${escapeHtml(topMargin.region)}</b> leads on margin (${topMargin.margin.toFixed(1)}%), while <b>${escapeHtml(byVolume[0].region)}</b> has the fewest orders (${byVolume[0].count}).`);
+        }
+      }
+
+      // 2. Discount vs Return correlation
+      const discXs = filteredDataset.map(d => d.discountPct);
+      const returnYs = filteredDataset.map(d => d.status === 'Returned' ? 1 : 0);
+      const corr = pearsonCorrelation(discXs, returnYs);
+      const { strength, direction } = correlationLabel(corr);
+      document.getElementById('statCorrelation').innerText = `r = ${corr.toFixed(2)} (${strength}, ${direction})`;
+      if (strength !== 'negligible') {
+        insights.push(`Discount percentage shows a <b>${strength} ${direction}</b> correlation (r = ${corr.toFixed(2)}) with return likelihood — ${direction === 'positive' ? 'heavier discounts coincide with more returns' : 'heavier discounts do not appear to drive more returns'}.`);
+      }
+
+      // 3. Month-over-month growth
+      const monthlyMap = {};
+      effective.forEach(item => {
+        const key = item.orderDate.slice(0, 7); // YYYY-MM
+        monthlyMap[key] = (monthlyMap[key] || 0) + item.netSales;
+      });
+      const monthKeys = Object.keys(monthlyMap).sort();
+      let momText = 'Not enough months in range';
+      if (monthKeys.length >= 2) {
+        const last = monthlyMap[monthKeys[monthKeys.length - 1]];
+        const prev = monthlyMap[monthKeys[monthKeys.length - 2]];
+        const growth = prev > 0 ? ((last - prev) / prev) * 100 : 0;
+        momText = `${growth >= 0 ? '+' : ''}${growth.toFixed(1)}% (${monthKeys[monthKeys.length - 2]} → ${monthKeys[monthKeys.length - 1]})`;
+        insights.push(`Net sales moved <b>${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%</b> from ${monthKeys[monthKeys.length - 2]} to ${monthKeys[monthKeys.length - 1]}.`);
+      }
+      document.getElementById('statMoM').innerText = momText;
+
+      // 4. Outlier detection (extreme-margin transactions)
+      const outliers = effective.filter(item => {
+        const marginPct = item.netSales !== 0 ? item.profit / item.netSales : 0;
+        return marginPct < -0.5 || marginPct > 0.9;
+      });
+      document.getElementById('statOutliers').innerText = `${outliers.length} of ${effective.length} orders`;
+      if (outliers.length > 0) {
+        const worst = [...outliers].sort((a, b) => (a.profit / a.netSales) - (b.profit / b.netSales))[0];
+        insights.push(`${outliers.length} transactions fall outside the normal margin range (below -50% or above 90%) — e.g. <b>${escapeHtml(worst.orderId)}</b> (${escapeHtml(worst.product)}) at ${((worst.profit / worst.netSales) * 100).toFixed(0)}% margin.`);
+      }
+
+      // 5. AOV 95% confidence interval
+      const netSalesArr = effective.map(d => d.netSales);
+      const aovMean = mean(netSalesArr);
+      const sd = stdDev(netSalesArr);
+      const se = sd / Math.sqrt(netSalesArr.length);
+      const marginErr = 1.96 * se;
+      document.getElementById('statAOVCI').innerText = `$${aovMean.toFixed(0)} ± $${marginErr.toFixed(0)} (n=${netSalesArr.length})`;
+
+      if (insights.length === 0) {
+        insights.push('No strong patterns detected in the current filter — try widening the date range or clearing filters.');
+      }
+
+      listEl.innerHTML = insights.map(i => `
+        <li class="flex gap-2">
+          <span class="text-amber-500 mt-0.5">●</span>
+          <span>${i}</span>
+        </li>
+      `).join('');
+    }
+
+    // ------------------------------------------------------------
+    // FIX 3: date-range filter support (explicit from/to + presets)
+    // ------------------------------------------------------------
+    function applyDatePreset(days) {
+      const toInput = document.getElementById('filterDateTo');
+      const fromInput = document.getElementById('filterDateFrom');
+      if (days === 0) {
+        fromInput.value = '';
+        toInput.value = '';
+      } else {
+        const to = new Date();
+        const from = new Date();
+        from.setDate(from.getDate() - days);
+        toInput.value = to.toISOString().split('T')[0];
+        fromInput.value = from.toISOString().split('T')[0];
+      }
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const reg = document.getElementById('filterRegion').value;
+      const cat = document.getElementById('filterCategory').value;
+      const seg = document.getElementById('filterSegment').value;
+      const chn = document.getElementById('filterChannel').value;
+      const sts = document.getElementById('filterStatus').value;
+      const disc = document.getElementById('filterDiscount').value;
+      const dateFrom = document.getElementById('filterDateFrom').value;
+      const dateTo = document.getElementById('filterDateTo').value;
+
+      filteredDataset = rawDataset.filter(item => {
+        if (reg !== 'ALL' && item.region !== reg) return false;
+        if (cat !== 'ALL' && item.category !== cat) return false;
+        if (seg !== 'ALL' && item.segment !== seg) return false;
+        if (chn !== 'ALL' && item.channel !== chn) return false;
+        if (sts !== 'ALL' && item.status !== sts) return false;
+
+        if (disc === '0-10' && (item.discountPct < 0 || item.discountPct > 0.10)) return false;
+        if (disc === '11-20' && (item.discountPct <= 0.10 || item.discountPct > 0.20)) return false;
+        if (disc === '21-50' && item.discountPct <= 0.20) return false;
+
+        if (dateFrom && item.orderDate < dateFrom) return false;
+        if (dateTo && item.orderDate > dateTo) return false;
+
+        return true;
+      });
+
+      document.getElementById('activeRecordCount').innerText = `Showing ${filteredDataset.length.toLocaleString()} / ${rawDataset.length.toLocaleString()} Orders`;
+
+      currentPage = 1;
+      updateKPIs();
+      updateCharts();
+      renderTable();
+      runScenarioSimulation();
+      renderInsights();
+      renderDataQualityReport();
+    }
+
+    function resetAllFilters() {
+      document.getElementById('filterRegion').value = 'ALL';
+      document.getElementById('filterCategory').value = 'ALL';
+      document.getElementById('filterSegment').value = 'ALL';
+      document.getElementById('filterChannel').value = 'ALL';
+      document.getElementById('filterStatus').value = 'ALL';
+      document.getElementById('filterDiscount').value = 'ALL';
+      document.getElementById('filterDateFrom').value = '';
+      document.getElementById('filterDateTo').value = '';
+      document.getElementById('tableSearch').value = '';
+      applyFilters();
+      showToast('Filters reset');
+    }
+
+    function updateKPIs() {
+      // Effective completed / delivered orders for core revenues
+      const effective = filteredDataset.filter(d => d.status === 'Delivered' || d.status === 'Shipped');
+      const allCount = filteredDataset.length;
+
+      const totalNetSales = effective.reduce((acc, curr) => acc + curr.netSales, 0);
+      const totalGrossSales = effective.reduce((acc, curr) => acc + curr.grossSales, 0);
+      const totalDiscount = effective.reduce((acc, curr) => acc + curr.discountAmount, 0);
+      const totalProfit = effective.reduce((acc, curr) => acc + curr.profit, 0);
+      const totalShipping = effective.reduce((acc, curr) => acc + curr.shippingCost, 0);
+      const totalQty = effective.reduce((acc, curr) => acc + curr.quantity, 0);
+
+      const marginPct = totalNetSales > 0 ? ((totalProfit / totalNetSales) * 100) : 0;
+      const aov = effective.length > 0 ? (totalNetSales / effective.length) : 0;
+
+      const returnedCount = filteredDataset.filter(d => d.status === 'Returned').length;
+      const cancelledCount = filteredDataset.filter(d => d.status === 'Cancelled').length;
+
+      const returnRate = allCount > 0 ? ((returnedCount / allCount) * 100) : 0;
+      const cancelRate = allCount > 0 ? ((cancelledCount / allCount) * 100) : 0;
+      const frictionRate = returnRate + cancelRate;
+
+      document.getElementById('kpiNetSales').innerText = `$${Math.round(totalNetSales).toLocaleString()}`;
+      document.getElementById('kpiGrossSales').innerText = `Gross: $${Math.round(totalGrossSales).toLocaleString()}`;
+      document.getElementById('kpiDiscountTotal').innerText = `Disc: $${Math.round(totalDiscount).toLocaleString()}`;
+
+      document.getElementById('kpiNetProfit').innerText = `$${Math.round(totalProfit).toLocaleString()}`;
+      document.getElementById('kpiMargin').innerText = `Margin: ${marginPct.toFixed(1)}%`;
+      document.getElementById('kpiShippingCost').innerText = `Ship: $${Math.round(totalShipping).toLocaleString()}`;
+
+      document.getElementById('kpiTotalOrders').innerText = allCount.toLocaleString();
+      document.getElementById('kpiAOV').innerText = `AOV: $${Math.round(aov)}`;
+      document.getElementById('kpiTotalQty').innerText = `Qty: ${totalQty.toLocaleString()}`;
+
+      document.getElementById('kpiFrictionRate').innerText = `${frictionRate.toFixed(1)}%`;
+      document.getElementById('kpiReturnRate').innerText = `Ret: ${returnRate.toFixed(1)}%`;
+      document.getElementById('kpiCancelRate').innerText = `Canc: ${cancelRate.toFixed(1)}%`;
+    }
+
+    function initCharts() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(100,116,139,0.12)';
+      const textColor = isDark ? '#cbd5e1' : '#475569';
+
+      // Chart 1: Monthly Trend
+      const ctx1 = document.getElementById('chartMonthlyTrend').getContext('2d');
+      chartInstances.monthly = new Chart(ctx1, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: textColor } },
+            y: { grid: { color: gridColor }, ticks: { color: textColor } }
+          }
+        }
+      });
+
+      // Chart 2: Category Share
+      const ctx2 = document.getElementById('chartCategoryShare').getContext('2d');
+      chartInstances.category = new Chart(ctx2, {
+        type: 'doughnut',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
+        }
+      });
+
+      // Chart 3: Region Profit
+      const ctx3 = document.getElementById('chartRegionProfit').getContext('2d');
+      chartInstances.region = new Chart(ctx3, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: textColor } },
+            y: { grid: { color: gridColor }, ticks: { color: textColor } }
+          }
+        }
+      });
+
+      // Chart 4: Sales Channel
+      const ctx4 = document.getElementById('chartSalesChannel').getContext('2d');
+      chartInstances.channel = new Chart(ctx4, {
+        type: 'pie',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
+        }
+      });
+
+      // Chart 5: Top Products
+      const ctx5 = document.getElementById('chartTopProducts').getContext('2d');
+      chartInstances.products = new Chart(ctx5, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: gridColor }, ticks: { color: textColor } },
+            y: { grid: { display: false }, ticks: { color: textColor } }
+          }
+        }
+      });
+
+      // Chart 6: Return Rate by Discount Band
+      const ctx6 = document.getElementById('chartDiscountReturn').getContext('2d');
+      chartInstances.discountReturn = new Chart(ctx6, {
+        type: 'bar',
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: textColor } },
+            y: { grid: { color: gridColor }, ticks: { color: textColor, callback: v => v + '%' }, beginAtZero: true }
+          }
+        }
+      });
+
+      // Chart 7: Pareto (products bar + cumulative % line)
+      const ctx7 = document.getElementById('chartPareto').getContext('2d');
+      chartInstances.pareto = new Chart(ctx7, {
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: textColor } },
+            y: { position: 'left', grid: { color: gridColor }, ticks: { color: textColor } },
+            y1: { position: 'right', min: 0, max: 100, grid: { display: false }, ticks: { color: textColor, callback: v => v + '%' } }
+          }
+        }
+      });
+    }
+
+    function updateCharts() {
+      const effective = filteredDataset.filter(d => d.status === 'Delivered' || d.status === 'Shipped');
+
+      // 1. Monthly Trend Data
+      const monthlyMap = {};
+      const monthsOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      monthsOrder.forEach(m => monthlyMap[m] = { sales: 0, profit: 0 });
+
+      effective.forEach(item => {
+        const month = new Date(item.orderDate).toLocaleString('default', { month: 'short' });
+        if (monthlyMap[month]) {
+          monthlyMap[month].sales += item.netSales;
+          monthlyMap[month].profit += item.profit;
+        }
+      });
+
+      chartInstances.monthly.data = {
+        labels: monthsOrder,
+        datasets: [
+          {
+            type: 'line',
+            label: 'Net Profit',
+            data: monthsOrder.map(m => Math.round(monthlyMap[m].profit)),
+            borderColor: '#10b981',
+            borderWidth: 2.5,
+            fill: false,
+            tension: 0.3
+          },
+          {
+            type: 'bar',
+            label: 'Net Sales',
+            data: monthsOrder.map(m => Math.round(monthlyMap[m].sales)),
+            backgroundColor: 'rgba(59, 130, 246, 0.85)',
+            borderRadius: 6
+          }
+        ]
+      };
+      chartInstances.monthly.update();
+
+      // 2. Category Share Data
+      const catMap = {};
+      effective.forEach(item => {
+        catMap[item.category] = (catMap[item.category] || 0) + item.netSales;
+      });
+
+      chartInstances.category.data = {
+        labels: Object.keys(catMap),
+        datasets: [{
+          data: Object.values(catMap).map(v => Math.round(v)),
+          backgroundColor: ['#2563eb', '#0d9488', '#f59e0b', '#e11d48']
+        }]
+      };
+      chartInstances.category.update();
+
+      // 3. Region Profit Data
+      const regMap = {};
+      effective.forEach(item => {
+        regMap[item.region] = (regMap[item.region] || 0) + item.profit;
+      });
+
+      chartInstances.region.data = {
+        labels: Object.keys(regMap),
+        datasets: [{
+          label: 'Profit ($)',
+          data: Object.values(regMap).map(v => Math.round(v)),
+          backgroundColor: '#3b82f6',
+          borderRadius: 6
+        }]
+      };
+      chartInstances.region.update();
+
+      // 4. Sales Channel Data
+      const chnMap = {};
+      effective.forEach(item => {
+        chnMap[item.channel] = (chnMap[item.channel] || 0) + item.netSales;
+      });
+
+      chartInstances.channel.data = {
+        labels: Object.keys(chnMap),
+        datasets: [{
+          data: Object.values(chnMap).map(v => Math.round(v)),
+          backgroundColor: ['#6366f1', '#ec4899', '#14b8a6']
+        }]
+      };
+      chartInstances.channel.update();
+
+      // 5. Top 5 Products Data
+      const prodMap = {};
+      effective.forEach(item => {
+        prodMap[item.product] = (prodMap[item.product] || 0) + item.profit;
+      });
+
+      const sortedProducts = Object.entries(prodMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      chartInstances.products.data = {
+        labels: sortedProducts.map(p => p[0]),
+        datasets: [{
+          data: sortedProducts.map(p => Math.round(p[1])),
+          backgroundColor: '#10b981',
+          borderRadius: 6
+        }]
+      };
+      chartInstances.products.update();
+
+      // 6. Return Rate by Discount Band (uses ALL filtered orders, not
+      // just Delivered/Shipped, since Returned status is what we're measuring)
+      const bands = [
+        { label: '0%', test: d => d.discountPct === 0 },
+        { label: '5-10%', test: d => d.discountPct > 0 && d.discountPct <= 0.10 },
+        { label: '11-15%', test: d => d.discountPct > 0.10 && d.discountPct <= 0.15 },
+        { label: '16-20%', test: d => d.discountPct > 0.15 && d.discountPct <= 0.20 },
+        { label: '21%+', test: d => d.discountPct > 0.20 }
+      ];
+      const bandStats = bands.map(b => {
+        const inBand = filteredDataset.filter(b.test);
+        const returned = inBand.filter(d => d.status === 'Returned').length;
+        return { label: b.label, rate: inBand.length ? (returned / inBand.length) * 100 : 0, n: inBand.length };
+      });
+      chartInstances.discountReturn.data = {
+        labels: bandStats.map(b => `${b.label} (n=${b.n})`),
+        datasets: [{
+          data: bandStats.map(b => parseFloat(b.rate.toFixed(1))),
+          backgroundColor: bandStats.map(b => b.rate > 15 ? '#e11d48' : b.rate > 8 ? '#f59e0b' : '#10b981'),
+          borderRadius: 6
+        }]
+      };
+      chartInstances.discountReturn.update();
+
+      // 7. Pareto: top 8 products by profit, with cumulative % line
+      const paretoEntries = Object.entries(prodMap).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      const totalProfitAll = Object.values(prodMap).reduce((a, c) => a + c, 0);
+      let running = 0;
+      const cumulative = paretoEntries.map(([, val]) => {
+        running += val;
+        return totalProfitAll > 0 ? (running / totalProfitAll) * 100 : 0;
+      });
+      chartInstances.pareto.data = {
+        labels: paretoEntries.map(p => p[0]),
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Profit ($)',
+            data: paretoEntries.map(p => Math.round(p[1])),
+            backgroundColor: 'rgba(59,130,246,0.85)',
+            borderRadius: 6,
+            yAxisID: 'y'
+          },
+          {
+            type: 'line',
+            label: 'Cumulative %',
+            data: cumulative.map(v => parseFloat(v.toFixed(1))),
+            borderColor: '#f59e0b',
+            borderWidth: 2.5,
+            tension: 0.25,
+            yAxisID: 'y1'
+          }
+        ]
+      };
+      chartInstances.pareto.update();
+    }
+
+    function runScenarioSimulation() {
+      const capVal = parseInt(document.getElementById('simCapSlider').value) / 100;
+      document.getElementById('simCapValue').innerText = `${Math.round(capVal * 100)}%`;
+
+      const effective = filteredDataset.filter(d => d.status === 'Delivered' || d.status === 'Shipped');
+      const baselineProfit = effective.reduce((acc, curr) => acc + curr.profit, 0);
+
+      let simulatedProfit = 0;
+      effective.forEach(item => {
+        let actualDiscountPct = item.discountPct;
+        let adjustedDiscountPct = Math.min(actualDiscountPct, capVal);
+        let discountDiffPct = actualDiscountPct - adjustedDiscountPct;
+
+        let recoveredRevenue = item.grossSales * discountDiffPct;
+        simulatedProfit += (item.profit + recoveredRevenue);
+      });
+
+      const profitGain = Math.max(0, simulatedProfit - baselineProfit);
+      const totalNetSales = effective.reduce((acc, curr) => acc + curr.netSales, 0);
+      const marginBoostPct = totalNetSales > 0 ? ((profitGain / totalNetSales) * 100) : 0;
+
+      document.getElementById('simProfitGain').innerText = `+$${Math.round(profitGain).toLocaleString()}`;
+      document.getElementById('simMarginBoost').innerText = `(+${marginBoostPct.toFixed(1)}% margin)`;
+    }
+
+    // ------------------------------------------------------------
+    // FIX 4: debounce search input (300ms) instead of re-rendering
+    // the table on every single keystroke.
+    // ------------------------------------------------------------
+    function handleTableSearch() {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        currentPage = 1;
+        renderTable();
+      }, 300);
+    }
+
+    // ------------------------------------------------------------
+    // FIX 5: clickable column sorting for Order ID / Date / Net
+    // Sales / Profit, with a small ▲▼ indicator per column.
+    // ------------------------------------------------------------
+    function sortTable(col) {
+      if (sortCol === col) {
+        sortAsc = !sortAsc;
+      } else {
+        sortCol = col;
+        sortAsc = false;
+      }
+      ['orderId', 'orderDate', 'netSales', 'profit'].forEach(c => {
+        const el = document.getElementById(`sortIcon-${c}`);
+        if (el) el.innerText = c === sortCol ? (sortAsc ? '▲' : '▼') : '';
+      });
+      renderTable();
+    }
+
+    function renderTable() {
+      const query = document.getElementById('tableSearch').value.toLowerCase();
+
+      let data = filteredDataset.filter(item => {
+        return item.orderId.toLowerCase().includes(query) ||
+          item.product.toLowerCase().includes(query) ||
+          item.city.toLowerCase().includes(query) ||
+          item.customerId.toLowerCase().includes(query) ||
+          item.category.toLowerCase().includes(query);
+      });
+
+      // Apply sort
+      data = [...data].sort((a, b) => {
+        let va = a[sortCol], vb = b[sortCol];
+        if (sortCol === 'orderDate') { va = new Date(va); vb = new Date(vb); }
+        if (typeof va === 'string') {
+          return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        }
+        return sortAsc ? va - vb : vb - va;
+      });
+
+      // Handle Pagination
+      const totalRecords = data.length;
+      const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+      currentPage = Math.min(currentPage, totalPages);
+
+      const startIdx = (currentPage - 1) * pageSize;
+      const endIdx = Math.min(startIdx + pageSize, totalRecords);
+      const pageData = data.slice(startIdx, endIdx);
+
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = '';
+
+      if (pageData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400">No transactions match your current search/filters.</td></tr>`;
+      } else {
+        pageData.forEach(item => {
+          let statusBadge = 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
+          if (item.status === 'Delivered') statusBadge = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400';
+          if (item.status === 'Shipped') statusBadge = 'bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400';
+          if (item.status === 'Pending') statusBadge = 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400';
+          if (item.status === 'Cancelled' || item.status === 'Returned') statusBadge = 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400';
+
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition-colors';
+          row.innerHTML = `
+                        <td class="py-3 px-4 font-mono font-medium text-slate-900 dark:text-slate-100">${escapeHtml(item.orderId)}</td>
+                        <td class="py-3 px-4 text-slate-500 dark:text-slate-400">${escapeHtml(item.orderDate)}</td>
+                        <td class="py-3 px-4 font-medium">${escapeHtml(item.region)} <span class="text-slate-400 font-normal">(${escapeHtml(item.city)})</span></td>
+                        <td class="py-3 px-4">${escapeHtml(item.category)}</td>
+                        <td class="py-3 px-4 font-medium text-slate-800 dark:text-slate-200">${escapeHtml(item.product)}</td>
+                        <td class="py-3 px-4 text-right font-semibold text-slate-900 dark:text-slate-100">$${item.netSales.toFixed(2)}</td>
+                        <td class="py-3 px-4 text-right font-semibold ${item.profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}">$${item.profit.toFixed(2)}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${statusBadge}">${escapeHtml(item.status)}</span>
+                        </td>
+                    `;
+          tbody.appendChild(row);
+        });
+      }
+
+      document.getElementById('tablePageInfo').innerText = `Showing ${totalRecords > 0 ? startIdx + 1 : 0} to ${endIdx} of ${totalRecords} entries`;
+      document.getElementById('currentPageNum').innerText = currentPage;
+      document.getElementById('btnPrevPage').disabled = currentPage === 1;
+      document.getElementById('btnNextPage').disabled = currentPage >= totalPages;
+    }
+
+    // FIX 6: basic HTML-escaping helper so product/customer/city
+    // strings can never break out of the table markup.
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function changePage(delta) {
+      currentPage += delta;
+      renderTable();
+    }
+
+    // ------------------------------------------------------------
+    // FIX 7: CSV export now properly escapes double quotes inside
+    // fields (e.g. a city or product name containing a comma or a
+    // quote) instead of naively wrapping raw text in quotes.
+    // ------------------------------------------------------------
+    function csvField(value) {
+      const str = String(value);
+      if (/[",\n]/.test(str)) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    }
+
+    function exportDataCSV() {
+      if (!filteredDataset.length) {
+        showToast('No data to export for current filters');
+        return;
+      }
+
+      const headers = ["Order ID", "Order Date", "Customer ID", "Region", "City", "Customer Segment", "Category", "Subcategory", "Product", "Quantity", "Unit Price", "Discount Pct", "Gross Sales", "Net Sales", "Cost", "Shipping Cost", "Profit", "Channel", "Order Status"];
+
+      const rows = filteredDataset.map(item => [
+        item.orderId,
+        item.orderDate,
+        item.customerId,
+        item.region,
+        item.city,
+        item.segment,
+        item.category,
+        item.subcategory,
+        item.product,
+        item.quantity,
+        item.unitPrice,
+        item.discountPct,
+        item.grossSales,
+        item.netSales,
+        item.cost,
+        item.shippingCost,
+        item.profit,
+        item.channel,
+        item.status
+      ].map(csvField));
+
+      const csvContent = "data:text/csv;charset=utf-8,"
+        + [headers.map(csvField).join(","), ...rows.map(e => e.join(","))].join("\n");
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Global_Retail_Sales_Filtered_Report_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast(`Exported ${filteredDataset.length.toLocaleString()} rows`);
+    }
+
+    // ------------------------------------------------------------
+    // CSV Import — lets a user load their own retail export instead
+    // of the mock dataset. Runs through the same cleanDataset()
+    // pipeline as generated data, so the Data Quality Report is
+    // meaningful for real files too (real exports usually have
+    // duplicates / inconsistent labels / missing fields).
+    // ------------------------------------------------------------
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let field = '';
+      let inQuotes = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQuotes) {
+          if (c === '"') {
+            if (text[i + 1] === '"') { field += '"'; i++; }
+            else { inQuotes = false; }
+          } else {
+            field += c;
+          }
+        } else {
+          if (c === '"') { inQuotes = true; }
+          else if (c === ',') { row.push(field); field = ''; }
+          else if (c === '\n' || c === '\r') {
+            if (c === '\r' && text[i + 1] === '\n') i++;
+            row.push(field); field = '';
+            rows.push(row); row = [];
+          } else {
+            field += c;
+          }
+        }
+      }
+      if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+      return rows.filter(r => !(r.length === 1 && r[0].trim() === ''));
+    }
+
+    const CSV_HEADER_MAP = {
+      'order id': 'orderId', 'order date': 'orderDate', 'customer id': 'customerId',
+      'region': 'region', 'city': 'city', 'customer segment': 'segment', 'segment': 'segment',
+      'category': 'category', 'subcategory': 'subcategory', 'product': 'product',
+      'quantity': 'quantity', 'unit price': 'unitPrice', 'discount pct': 'discountPct',
+      'gross sales': 'grossSales', 'net sales': 'netSales', 'cost': 'cost',
+      'shipping cost': 'shippingCost', 'profit': 'profit', 'channel': 'channel',
+      'order status': 'status', 'status': 'status'
+    };
+
+    function handleCSVImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const rows = parseCSV(String(e.target.result));
+          if (rows.length < 2) { showToast('CSV looks empty'); return; }
+
+          const headerRow = rows[0].map(h => h.trim().toLowerCase());
+          const keys = headerRow.map(h => CSV_HEADER_MAP[h] || null);
+
+          const parsedRecords = [];
+          for (let i = 1; i < rows.length; i++) {
+            const r = rows[i];
+            if (r.length === 1 && r[0].trim() === '') continue;
+            const rec = {};
+            keys.forEach((key, idx) => {
+              if (!key) return;
+              rec[key] = r[idx] !== undefined ? String(r[idx]).trim() : '';
+            });
+            if (!rec.orderId) continue; // skip rows we can't key by
+
+            const numFields = ['quantity', 'unitPrice', 'discountPct', 'discountAmount', 'grossSales', 'netSales', 'cost', 'shippingCost', 'profit'];
+            numFields.forEach(f => {
+              if (rec[f] !== undefined && rec[f] !== '') {
+                const n = parseFloat(rec[f]);
+                rec[f] = isNaN(n) ? null : n;
+              } else {
+                rec[f] = null;
+              }
+            });
+
+            // Derive computed fields when the source file doesn't have them
+            if (rec.grossSales == null && rec.quantity != null && rec.unitPrice != null) {
+              rec.grossSales = parseFloat((rec.quantity * rec.unitPrice).toFixed(2));
+            }
+            if (rec.discountAmount == null && rec.grossSales != null && rec.discountPct != null) {
+              rec.discountAmount = parseFloat((rec.grossSales * rec.discountPct).toFixed(2));
+            }
+            if (rec.netSales == null && rec.grossSales != null && rec.discountAmount != null) {
+              rec.netSales = parseFloat((rec.grossSales - rec.discountAmount).toFixed(2));
+            }
+            if (!rec.status) rec.status = 'Delivered';
+            if (!rec.customerId) rec.customerId = 'CUST-UNKNOWN';
+            if (!rec.channel) rec.channel = 'Online Platform';
+            if (!rec.segment) rec.segment = 'Consumer';
+            if (!rec.category) rec.category = 'Uncategorized';
+            if (!rec.subcategory) rec.subcategory = rec.category;
+            if (!rec.city) rec.city = 'Unknown';
+            if (!rec.region) rec.region = 'Unknown';
+
+            parsedRecords.push(rec);
+          }
+
+          if (parsedRecords.length === 0) {
+            showToast('No usable rows found in this CSV');
+            return;
+          }
+
+          const cleaned = cleanDataset(parsedRecords);
+          rawDataset = cleaned.clean.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+          dataQualityReport = cleaned.report;
+
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ dataset: rawDataset, report: dataQualityReport }));
+          } catch (err) {
+            console.warn('Could not cache imported dataset.', err);
+          }
+
+          filteredDataset = [...rawDataset];
+          applyFilters();
+          showToast(`Imported ${parsedRecords.length.toLocaleString()} rows (${cleaned.report.duplicatesRemoved} duplicates removed)`);
+        } catch (err) {
+          console.error('CSV import failed:', err);
+          showToast('Could not parse this CSV file');
+        } finally {
+          event.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // ------------------------------------------------------------
+    // FIX 8: lightweight toast helper used by export / reset /
+    // regenerate actions for better feedback (no more silent clicks).
+    // ------------------------------------------------------------
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+
+</html>
