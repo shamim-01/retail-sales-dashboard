@@ -1842,6 +1842,23 @@
             if (!rec.city) rec.city = 'Unknown';
             if (!rec.region) rec.region = 'Unknown';
 
+            // Guard against a silent bug: if the source file has no Cost/
+            // Profit columns, those fields stay null and would previously
+            // sum as $0 in every KPI with no warning at all. Instead,
+            // estimate them with a clearly-flagged assumption and count
+            // how many rows needed it, so it's visible, not silent.
+            if (rec.netSales != null) {
+              if (rec.shippingCost == null) rec.shippingCost = 10;
+              if (rec.cost == null) {
+                rec.cost = parseFloat((rec.netSales * 0.6).toFixed(2));
+                rec._financialsEstimated = true;
+              }
+              if (rec.profit == null) {
+                rec.profit = parseFloat((rec.netSales - rec.cost - rec.shippingCost).toFixed(2));
+                rec._financialsEstimated = true;
+              }
+            }
+
             parsedRecords.push(rec);
           }
 
@@ -1849,6 +1866,8 @@
             showToast('No usable rows found in this CSV');
             return;
           }
+
+          const estimatedCount = parsedRecords.filter(r => r._financialsEstimated).length;
 
           const cleaned = cleanDataset(parsedRecords);
           rawDataset = cleaned.clean.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
@@ -1862,7 +1881,8 @@
 
           filteredDataset = [...rawDataset];
           applyFilters();
-          showToast(`Imported ${parsedRecords.length.toLocaleString()} rows (${cleaned.report.duplicatesRemoved} duplicates removed)`);
+          const estNote = estimatedCount > 0 ? `, ${estimatedCount} had cost/profit estimated` : '';
+          showToast(`Imported ${parsedRecords.length.toLocaleString()} rows (${cleaned.report.duplicatesRemoved} duplicates removed${estNote})`);
         } catch (err) {
           console.error('CSV import failed:', err);
           showToast('Could not parse this CSV file');
