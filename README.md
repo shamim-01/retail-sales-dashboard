@@ -2,7 +2,7 @@
 
 A single-file, interactive retail analytics dashboard built to practice **data visualization, statistical analysis, and data-cleaning workflows**. No backend, no database — everything runs client-side in the browser.
 
-**🔗 Live demo:** https://claude.ai/artifact/YGAq3oLJCTKNG7hzcX7RSo
+**🔗 Live demo:** [https://claude.ai/artifact/YGAq3oLJCTKNG7hzcX7RSo](https://retail-sales-dashboard-hiig.vercel.app/)
 
 > **Note on data:** This project uses a **synthetically generated dataset** (1,000 records) built specifically for practice. It is deliberately seeded with realistic messiness (duplicate rows, inconsistent labels, missing values) so the data-cleaning pipeline has something real to clean. It is not production data.
 
