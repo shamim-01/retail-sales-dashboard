@@ -1,0 +1,26 @@
+
+## FAQ
+
+**Q: What does this project actually do?**
+A: An interactive retail sales dashboard — filter 1,000 orders across 6 dimensions, see live KPIs (revenue, profit, margin), 7 charts, a data-cleaning pipeline, and auto-generated statistical insights (correlation, confidence intervals, outliers).
+
+**Q: Is the data real?**
+A: No — it's a synthetically generated dataset, deliberately seeded with realistic messiness (duplicates, inconsistent labels, missing values) to practice data cleaning. Not production data.
+
+**Q: What tech stack did you use, and why?**
+A: Vanilla HTML/JS + Tailwind CSS + Chart.js. No framework/build step — the goal was to actually understand DOM manipulation and state flow, not hide it behind a framework.
+
+**Q: What was the hardest bug you fixed?**
+A: An external icon library failed to load, and its init call was the first line inside my startup function — so when it threw an error, every line after it (loading data, building charts) silently never ran. Fixed by removing the external dependency and using inline SVG icons wrapped in try/catch.
+
+**Q: What statistics did you implement, and from scratch?**
+A: Mean, standard deviation, Pearson correlation, and a 95% confidence interval — all written manually (no stats library) so I actually understand the math behind them.
+
+**Q: Does correlation in this dashboard prove causation?**
+A: No. It shows discount % and return rate move together (or not) — it doesn't prove discounts cause returns. Could be a confounding factor.
+
+**Q: What would you improve with more time?**
+A: Swap in a real dataset (e.g. Kaggle Superstore), add unit tests for the statistics functions, and rebuild the state layer in React.
+
+**Q: Did you use AI to build this?**
+A: Yes — AI pair-programming (Claude), the way most developers work now. I directed the requirements, debugged issues, and validated every calculation myself.
